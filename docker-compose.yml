@@ -1,0 +1,99 @@
+
+networks:
+  webnet:
+
+services:
+  nginx:
+    container_name: nginx
+    image: nginx:latest
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d/:/etc/nginx/conf.d/:Z
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:Z
+      - ./certs/cloudflare.crt:/etc/nginx/certs/cloudflare.crt:ro,Z
+      - ./private/cloudflare.key:/etc/nginx/certs/cloudflare.key:ro,Z
+    networks:
+      - webnet
+    depends_on:
+      - react-site
+      - dbms
+
+  react-site:
+    build:
+      context: website
+      dockerfile: Dockerfile
+    container_name: react-site
+    restart: always
+    ports:
+      - "5000:80"
+    networks:
+      - webnet
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  dbms:
+    build:
+      context: dbms/final-project
+      dockerfile: Dockerfile
+      target: prod
+    container_name: dbms
+    restart: always
+    ports:
+      - "5001:5000"
+    env_file: dbms/final-project/.env
+    environment:
+      FLASK_APP: run.py
+      FLASK_DEBUG: "0"
+      DB_HOST: mut-aid-db
+      PYTHONUNBUFFERED: "1"
+    networks:
+      - webnet
+    depends_on:
+      mut-aid-db:
+        condition: service_healthy
+
+  mut-aid-db:
+    image: postgres:16
+    container_name: mut-aid-db
+    restart: always
+    env_file: dbms/final-project/.env
+    volumes:
+      - mut_aid_postgres_data:/var/lib/postgresql/data
+      - ./dbms/final-project/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - webnet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mut_aid_postgres_data:
+
+#  certbot:
+#    image: certbot/certbot
+#    container_name: certbot
+#    networks:
+#      - webnet
+#    volumes:
+#      - ./certbot/www:/var/www/certbot:rw,z
+#      - ./certbot/conf:/etc/letsencrypt:rw,z
+#    entrypoint: 
+#      sh -c "certbot certonly --webroot 
+#      -v
+#      --webroot-path=/var/www/certbot 
+#      --email jrk.reno@gmail.com 
+#      --agree-tos 
+#      --no-eff-email 
+#      -d jayknight.dev -d www.jayknight.dev  
+#      && crond -f"
+#    depends_on:
+#      - nginx

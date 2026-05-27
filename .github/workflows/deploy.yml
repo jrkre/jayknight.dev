@@ -1,0 +1,57 @@
+name: Test and Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test-react:
+    name: React tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: react-site
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: jrkre/website
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: react-site/package-lock.json
+      - run: npm ci
+      - run: npm test -- --watchAll=false --passWithNoTests
+
+  deploy-react-site:
+    name: Deploy react-site
+    needs: test-react
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            cd /home/jrkre/web/website
+            git pull
+            cd /home/jrkre/web
+            docker compose up --build -d react-site
+
+  deploy-dbms:
+    name: Deploy dbms
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            cd /home/jrkre/web/dbms
+            git pull
+            cd /home/jrkre/web
+            docker compose up --build -d dbms
