@@ -39,7 +39,7 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
 
       - name: Deploy
-        run: ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no jrkre@100.109.174.32 "cd /home/jrkre/web/website && git pull && cd /home/jrkre/web && docker compose up --build -d react-site"
+        run: ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no jrkre@100.109.174.32 "cd /home/jrkre/web/website && git pull && cd /home/jrkre/web && podman compose up --build -d react-site"
 
   deploy-dbms:
     name: Deploy dbms
@@ -56,4 +56,4 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
 
       - name: Deploy
-        run: ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no jrkre@100.109.174.32 "cd /home/jrkre/web/dbms && git pull && cd /home/jrkre/web && docker compose up --build -d dbms"
+        run: ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no jrkre@100.109.174.32 "cd /home/jrkre/web/dbms && git pull && cd /home/jrkre/web && podman compose up --build -d dbms"
